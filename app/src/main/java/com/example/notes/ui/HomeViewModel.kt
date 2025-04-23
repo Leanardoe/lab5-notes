@@ -1,5 +1,6 @@
 package com.example.notes.ui
 
+import androidx.compose.runtime.collectAsState
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.notes.data.Note
@@ -10,16 +11,29 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 
 class HomeViewModel(notesRepository: NotesRepository) : ViewModel() {
+    val notes = notesRepository
 
     val homeUiState: StateFlow<HomeUiState> =
-        notesRepository.getAllNotesStream().map { HomeUiState(it) }
+        notes.getAllNotesStream().map { HomeUiState(it) }
             .stateIn(
                 scope = viewModelScope,
                 started = SharingStarted.WhileSubscribed(5_000L),
                 initialValue = HomeUiState()
             )
 
-    fun updateUiState
+    fun selectNote(note: Note) {
+    }
+
+    suspend fun addNote(note: Note) {
+        notes.insertNote(note)
+    }
+
+    suspend fun editNote(note: Note) {
+        notes.updateNote(note)
+    }
 }
 
-data class HomeUiState(val noteList: List<Note> = listOf())
+data class HomeUiState(
+    val noteList: List<Note> = listOf(),
+    val currentNote: Note? = null
+)

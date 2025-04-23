@@ -5,14 +5,22 @@ import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Card
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -37,19 +45,41 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.room.Update
 import com.example.notes.data.Note
+import kotlinx.coroutines.selects.select
 import java.time.Instant
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.ui.platform.LocalLayoutDirection
 
 @Composable
 fun HomeScreen(viewModel: HomeViewModel = viewModel(factory = AppViewModelProvider.Factory)) {
     val homeUiState by viewModel.homeUiState.collectAsState()
 
-    NoteList(
-        noteList = homeUiState.noteList,
-        onNoteClick = { UpdateNote() }
-    )
+    Scaffold(
+        floatingActionButton = { FloatingActionButton(
+            onClick = { NewNote() }
+        ) {
+            Icon(
+                imageVector = Icons.Default.Add,
+                contentDescription = "New Note"
+            )
+        }
+    }) { innerPadding ->
+        NoteList(
+            noteList = homeUiState.noteList,
+            onNoteClick = { EditNote() },
+            Modifier.padding(innerPadding)
+        )
+    }
+
 }
 
 fun NewNote() {
+
+}
+
+fun EditNote() {
 
 }
 
@@ -61,6 +91,7 @@ fun UpdateNote() {
 fun NoteList(
     noteList: List<Note>,
     onNoteClick: (Note) -> Unit,
+    modifier: Modifier
 ) {
     LazyColumn (
 
@@ -73,6 +104,8 @@ fun NoteList(
 
 @Composable
 fun NoteCard(note: Note, modifier: Modifier = Modifier) {
+    val selectedNote = note
+
     Card(
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -81,13 +114,13 @@ fun NoteCard(note: Note, modifier: Modifier = Modifier) {
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Text(
-                text = note.title,
+                text = selectedNote.title,
                 textAlign = TextAlign.Left,
                 fontWeight = FontWeight.Bold
             )
 
             Text(
-                text = note.content,
+                text = selectedNote.content,
                 textAlign = TextAlign.Left
             )
         }
@@ -104,7 +137,8 @@ fun AddDialog(
 
     Dialog(onDismissRequest = { onDismissRequest() }) {
         Card(
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
                 .height(320.dp)
                 .padding(16.dp),
             shape = RoundedCornerShape(16.dp)
@@ -117,7 +151,8 @@ fun AddDialog(
             )
 
             Column (
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier
+                    .fillMaxSize()
                     .padding(start = 20.dp, end = 20.dp),
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally
