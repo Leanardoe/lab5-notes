@@ -13,6 +13,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
+import com.example.notes.ui.HomeViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.notes.ui.HomeScreen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -27,7 +30,7 @@ fun NotesApp() {
             modifier = Modifier.fillMaxSize()
                 .padding(it)
         ) {
-
+            HomeScreen()
         }
     }
 }
