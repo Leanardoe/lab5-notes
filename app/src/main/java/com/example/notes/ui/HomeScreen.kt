@@ -68,6 +68,13 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel(factory = AppViewModelProvid
         }
     }
 
+    val deleteNote : (note: Note) -> Unit = { note ->
+        coroutineScope.launch {
+            viewModel.deleteNote(note)
+            EditDialog.value = false
+        }
+    }
+
     Scaffold(
         floatingActionButton = { FloatingActionButton(
             onClick = { AddDialog.value = true }
@@ -92,6 +99,7 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel(factory = AppViewModelProvid
                 NoteDialog(
                     onDismissRequest = { EditDialog.value = false },
                     onConfirmation = editNote,
+                    onDeleteClick = deleteNote,
                     note = homeUiState.currentNote
                 )
             }
@@ -151,6 +159,7 @@ fun NoteCard(note: Note, onNoteClick: (Note) -> Unit, modifier: Modifier = Modif
 fun NoteDialog(
     onDismissRequest: () -> Unit,
     onConfirmation: (Note) -> Unit,
+    onDeleteClick: (Note) -> Unit = {},
     note: Note? = null
 ) {
     var noteTitle by remember { mutableStateOf("") }
@@ -204,6 +213,15 @@ fun NoteDialog(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End
                 ) {
+                    if (note != null) {
+                        TextButton(
+                            onClick = { onDeleteClick(note) },
+                            modifier = Modifier.padding(8.dp)
+                        ) {
+                            Text("Delete")
+                        }
+                    }
+
                     TextButton(
                         onClick = { onDismissRequest() },
                         modifier = Modifier.padding(8.dp)

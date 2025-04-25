@@ -9,7 +9,7 @@ import com.example.notes.NotesApplication
 object AppViewModelProvider {
     val Factory = viewModelFactory {
         initializer {
-            HomeViewModel(notesApplication().container.notesRepository)
+            HomeViewModel(notesApplication().container.notesRepository, notesApplication().userPreferencesRepository)
         }
     }
 }
