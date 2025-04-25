@@ -2,20 +2,16 @@ package com.example.notes.ui
 
 import android.os.Build
 import androidx.annotation.RequiresApi
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -32,33 +28,49 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.Font
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.lifecycle.viewmodel.viewModelFactory
-import androidx.room.Update
 import com.example.notes.data.Note
-import kotlinx.coroutines.selects.select
-import java.time.Instant
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 
 @Composable
 fun HomeScreen(viewModel: HomeViewModel = viewModel(factory = AppViewModelProvider.Factory)) {
     val homeUiState by viewModel.homeUiState.collectAsState()
+    val AddDialog = remember { mutableStateOf(false) }
+    val EditDialog = remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
+
+    val newNote : (note: Note) -> Unit = { note ->
+        coroutineScope.launch {
+            viewModel.addNote(note)
+            AddDialog.value = false
+        }
+    }
+
+    val selectNote : (note: Note) -> Unit = { note ->
+        homeUiState.currentNote = note
+        EditDialog.value = true
+    }
+
+    val editNote : (note: Note) -> Unit = { note ->
+        coroutineScope.launch {
+            viewModel.editNote(note)
+            EditDialog.value = false
+        }
+    }
 
     Scaffold(
         floatingActionButton = { FloatingActionButton(
-            onClick = { NewNote() }
+            onClick = { AddDialog.value = true }
         ) {
             Icon(
                 imageVector = Icons.Default.Add,
@@ -66,24 +78,31 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel(factory = AppViewModelProvid
             )
         }
     }) { innerPadding ->
+        when {
+            AddDialog.value -> {
+                NoteDialog(
+                    onDismissRequest = { AddDialog.value = false },
+                    onConfirmation = newNote
+                )
+            }
+        }
+
+        when {
+            EditDialog.value -> {
+                NoteDialog(
+                    onDismissRequest = { EditDialog.value = false },
+                    onConfirmation = editNote,
+                    note = homeUiState.currentNote
+                )
+            }
+        }
+
         NoteList(
             noteList = homeUiState.noteList,
-            onNoteClick = { EditNote() },
+            onNoteClick = selectNote,
             Modifier.padding(innerPadding)
         )
     }
-
-}
-
-fun NewNote() {
-
-}
-
-fun EditNote() {
-
-}
-
-fun UpdateNote() {
 
 }
 
@@ -94,20 +113,21 @@ fun NoteList(
     modifier: Modifier
 ) {
     LazyColumn (
-
+        modifier = Modifier.padding(16.dp)
     ) {
         items(items = noteList, key = {it.id}) { item ->
-            NoteCard(item)
+            NoteCard(item, onNoteClick)
         }
     }
 }
 
 @Composable
-fun NoteCard(note: Note, modifier: Modifier = Modifier) {
+fun NoteCard(note: Note, onNoteClick: (Note) -> Unit, modifier: Modifier = Modifier) {
     val selectedNote = note
 
-    Card(
+    Card (
         modifier = Modifier.fillMaxWidth()
+            .clickable { onNoteClick(note) }
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -128,12 +148,21 @@ fun NoteCard(note: Note, modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun AddDialog(
+fun NoteDialog(
     onDismissRequest: () -> Unit,
-    onConfirmation: () -> Unit,
+    onConfirmation: (Note) -> Unit,
+    note: Note? = null
 ) {
     var noteTitle by remember { mutableStateOf("") }
     var noteText by remember { mutableStateOf("") }
+    var dialogTitle = "Add Note"
+
+
+    if (note != null) {
+        dialogTitle = "Edit Note"
+        noteTitle = note.title
+        noteText = note.content
+    }
 
     Dialog(onDismissRequest = { onDismissRequest() }) {
         Card(
@@ -144,7 +173,7 @@ fun AddDialog(
             shape = RoundedCornerShape(16.dp)
         ) {
             Text(
-                text = "Add Note",
+                text = dialogTitle,
                 modifier = Modifier.padding(top = 24.dp, start = 20.dp, end = 20.dp),
                 textAlign = TextAlign.Left,
                 fontSize = 24.sp
@@ -183,7 +212,16 @@ fun AddDialog(
                     }
 
                     TextButton(
-                        onClick = { onConfirmation() },
+                        onClick = {
+                            if (note == null) {
+                                val newNote : Note = Note(0, noteTitle, noteText, System.currentTimeMillis())
+                                onConfirmation(newNote)
+                            }
+                            else {
+                                val editNote : Note = Note(note.id, noteTitle, noteText, note.timestamp)
+                                onConfirmation(editNote)
+                            }
+                          },
                         modifier = Modifier.padding(8.dp)
                     ) {
                         Text("Save")
@@ -199,13 +237,14 @@ fun AddDialog(
 @Preview
 fun NoteCardPreview() {
     val note = Note(1, "Test Note", "This is a test", System.currentTimeMillis())
-    NoteCard(note)
+    val onNoteClick : (Note) -> Unit = {}
+    NoteCard(note, onNoteClick)
 }
 
 @Composable
 @Preview
 fun AddDialogPreview() {
     val onDismissRequest = {}
-    val onConfirmation = {}
-    AddDialog(onDismissRequest, onConfirmation)
+    val onConfirmation : (Note) -> Unit = {}
+    NoteDialog(onDismissRequest, onConfirmation)
 }

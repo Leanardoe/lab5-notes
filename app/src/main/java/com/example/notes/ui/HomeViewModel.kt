@@ -35,5 +35,5 @@ class HomeViewModel(notesRepository: NotesRepository) : ViewModel() {
 
 data class HomeUiState(
     val noteList: List<Note> = listOf(),
-    val currentNote: Note? = null
+    var currentNote: Note? = null,
 )
