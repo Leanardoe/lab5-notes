@@ -2,6 +2,7 @@ package com.example.notes.ui
 
 import android.os.Build
 import androidx.annotation.RequiresApi
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -56,9 +57,35 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 fun HomeScreen(viewModel: HomeViewModel = viewModel(factory = AppViewModelProvider.Factory)) {
     val homeUiState by viewModel.homeUiState.collectAsState()
 
+    // Step 1: Track dialog visibility
+    var showDialog by remember { mutableStateOf(false) }
+    var editDialog by remember { mutableStateOf(false) }
+    var selectedNote by remember { mutableStateOf<Note?>(null) }
+
+    // Step 2: Conditionally show the dialog
+    if (showDialog) {
+        AddDialog(
+            onDismissRequest = { showDialog = false },
+            onConfirmation = {
+                NewNote()
+                showDialog = false
+            }
+        )
+    }
+    else if (editDialog && selectedNote != null) {
+        EditDialog(
+            note = selectedNote!!,
+            onDismissRequest = { editDialog = false },
+            onConfirmation = { updatedNote ->
+                EditNote(updatedNote) // ⬅️ pass it in
+                editDialog = false
+            }
+        )
+    }
+
     Scaffold(
         floatingActionButton = { FloatingActionButton(
-            onClick = { NewNote() }
+            onClick = { showDialog = true }
         ) {
             Icon(
                 imageVector = Icons.Default.Add,
@@ -67,9 +94,17 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel(factory = AppViewModelProvid
         }
     }) { innerPadding ->
         NoteList(
-            noteList = homeUiState.noteList,
-            onNoteClick = { EditNote() },
-            Modifier.padding(innerPadding)
+            //noteList = homeUiState.noteList,
+            noteList = listOf(
+                Note(1, "Test Note 1", "This is the content of note 1.", System.currentTimeMillis()),
+                Note(2, "Test Note 2", "This is the content of note 2.", System.currentTimeMillis()),
+                Note(3, "Test Note 3", "This is the content of note 3.", System.currentTimeMillis())
+            ),
+            modifier = Modifier.padding(innerPadding),
+            onNoteClick = { note ->
+                selectedNote = note
+                editDialog = true
+            }
         )
     }
 
@@ -79,48 +114,43 @@ fun NewNote() {
 
 }
 
-fun EditNote() {
-
-}
-
-fun UpdateNote() {
+fun EditNote(note: Note) {
 
 }
 
 @Composable
 fun NoteList(
     noteList: List<Note>,
-    onNoteClick: (Note) -> Unit,
-    modifier: Modifier
+    modifier: Modifier,
+    onNoteClick: (Note) -> Unit
 ) {
-    LazyColumn (
-
-    ) {
-        items(items = noteList, key = {it.id}) { item ->
-            NoteCard(item)
+    LazyColumn(modifier = modifier) {
+        items(items = noteList, key = { it.id }) { item ->
+            NoteCard(note = item, onClick = { onNoteClick(item) })
         }
     }
 }
 
 @Composable
-fun NoteCard(note: Note, modifier: Modifier = Modifier) {
-    val selectedNote = note
-
+fun NoteCard(note: Note, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Card(
-        modifier = Modifier.fillMaxWidth()
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(8.dp)
+            .clickable { onClick() }
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Text(
-                text = selectedNote.title,
+                text = note.title,
                 textAlign = TextAlign.Left,
                 fontWeight = FontWeight.Bold
             )
 
             Text(
-                text = selectedNote.content,
+                text = note.content,
                 textAlign = TextAlign.Left
             )
         }
@@ -194,12 +224,60 @@ fun AddDialog(
     }
 }
 
-@RequiresApi(Build.VERSION_CODES.O)
 @Composable
-@Preview
-fun NoteCardPreview() {
-    val note = Note(1, "Test Note", "This is a test", System.currentTimeMillis())
-    NoteCard(note)
+fun EditDialog(
+    note: Note,
+    onDismissRequest: () -> Unit,
+    onConfirmation: (Note) -> Unit // ⬅️ pass the updated note back
+) {
+    var title by remember { mutableStateOf(note.title) }
+    var content by remember { mutableStateOf(note.content) }
+
+    Dialog(onDismissRequest = onDismissRequest) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(320.dp)
+                .padding(16.dp),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(20.dp),
+                verticalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text("Edit Note", fontSize = 24.sp, fontWeight = FontWeight.Bold)
+
+                OutlinedTextField(
+                    value = title,
+                    onValueChange = { title = it },
+                    label = { Text("Title") }
+                )
+
+                OutlinedTextField(
+                    value = content,
+                    onValueChange = { content = it },
+                    label = { Text("Content") }
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(onClick = onDismissRequest) {
+                        Text("Cancel")
+                    }
+                    TextButton(onClick = {
+                        val updatedNote = note.copy(title = title, content = content)
+                        onConfirmation(updatedNote)
+                    }) {
+                        Text("Save")
+                    }
+                }
+            }
+        }
+    }
 }
 
 @Composable
