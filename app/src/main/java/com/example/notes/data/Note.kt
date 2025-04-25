@@ -10,13 +10,4 @@ data class Note (
     val title: String,
     val content: String,
     val timestamp: Long
-) {
-    fun copy(
-        id: Int = this.id,
-        title: String = this.title,
-        content: String = this.content,
-        timestamp: Long = this.timestamp
-    ): Note {
-        return Note(id, title, content, timestamp)
-    }
-}
+)
